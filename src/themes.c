@@ -17,6 +17,8 @@ theme_t *gTheme;
 
 static int screenWidth;
 static int screenHeight;
+static int screenFullWidth;
+static int screenFullHeight;
 static int guiThemeID = 0;
 
 static int nThemes = 0;
@@ -1257,7 +1259,7 @@ void thmReinit(const char *path)
 
 void thmReloadScreenExtents(void)
 {
-    rmGetScreenExtents(&screenWidth, &screenHeight);
+    rmGetScreenExtents(&screenWidth, &screenHeight, &screenFullWidth, &screenFullHeight);
 }
 
 const char *thmGetValue(void)

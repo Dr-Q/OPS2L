@@ -66,7 +66,7 @@ int rmSetMode(int force);
 void rmEnd(void);
 
 /** Fills the parameters with the screen width and height */
-void rmGetScreenExtents(int *w, int *h);
+void rmGetScreenExtents(int *w, int *h, int *fw, int *fh);
 
 /** Manually prepares a texture for rendering (should not be normally needed). 
 * txt->Vram will be nonzero on success.
@@ -122,6 +122,12 @@ void rmApplyShiftRatio(int *y);
 
 /** sets the transposition coordiantes (all content is transposed with these values) */
 void rmSetTransposition(float x, float y);
+
+/** sets the drawing area to full screen (including overscan area) */
+void rmSetDrawAreaFull();
+
+/** sets the drawing area to active screen (excluding overscan area) */
+void rmSetDrawAreaActive();
 
 //Returns H-sync frequency in KHz
 unsigned char rmGetHsync(void);

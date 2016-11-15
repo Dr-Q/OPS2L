@@ -30,6 +30,8 @@
 
 static int screenWidth;
 static int screenHeight;
+static int screenFullWidth;
+static int screenFullHeight;
 
 // Utility stuff
 #define KEYB_MODE 2
@@ -84,7 +86,9 @@ int diaShowKeyb(char *text, int maxLen, int hide_text)
 
         rmStartFrame();
         guiDrawBGPlasma();
-        rmDrawRect(0, 0, screenWidth, screenHeight, gColDarker);
+        rmSetDrawAreaFull();
+        rmDrawRect(0, 0, screenFullWidth, screenFullHeight, gColDarker);
+        rmSetDrawAreaActive();
 
         //Text
         fntRenderString(gTheme->fonts[0], 50, 120, ALIGN_NONE, 0, 0, hide_text ? mask_buffer : text, gTheme->textColor);
@@ -254,7 +258,9 @@ static int diaShowColSel(unsigned char *r, unsigned char *g, unsigned char *b)
 
         rmStartFrame();
         guiDrawBGPlasma();
-        rmDrawRect(0, 0, screenWidth, screenHeight, gColDarker);
+        rmSetDrawAreaFull();
+        rmDrawRect(0, 0, screenFullWidth, screenFullHeight, gColDarker);
+        rmSetDrawAreaActive();
 
         // "Color selection"
         fntRenderString(gTheme->fonts[0], 50, 50, ALIGN_NONE, 0, 0, _l(_STR_COLOR_SELECTION), GS_SETREG_RGBA(0x060, 0x060, 0x060, 0x060));
@@ -794,7 +800,7 @@ static struct UIItem *diaFindByID(struct UIItem *ui, int id)
 
 int diaExecuteDialog(struct UIItem *ui, int uiId, short inMenu, int (*updater)(int modified))
 {
-    rmGetScreenExtents(&screenWidth, &screenHeight);
+    rmGetScreenExtents(&screenWidth, &screenHeight, &screenFullWidth, &screenFullHeight);
 
     struct UIItem *cur = NULL;
     if (uiId != -1)

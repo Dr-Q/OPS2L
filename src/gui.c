@@ -42,9 +42,12 @@ static s32 gSemaId;
 static s32 gGUILockSemaId;
 static ee_sema_t gQueueSema;
 
-static int screenWidth;
 static float wideScreenScale;
+
+static int screenWidth;
 static int screenHeight;
+static int screenFullWidth;
+static int screenFullHeight;
 
 // forward decl.
 static void guiShow();
@@ -103,7 +106,7 @@ static VU_VECTOR pgrad3[12] = {{1, 1, 0, 1}, {-1, 1, 0, 1}, {1, -1, 0, 1}, {-1, 
 
 void guiReloadScreenExtents()
 {
-    rmGetScreenExtents(&screenWidth, &screenHeight);
+    rmGetScreenExtents(&screenWidth, &screenHeight, &screenFullWidth, &screenFullHeight);
 }
 
 void guiInit(void)
@@ -1329,7 +1332,9 @@ static void guiRenderGreeting()
 {
     int fade = wfadeout > 0xFF ? 0xFF : wfadeout;
     u64 mycolor = GS_SETREG_RGBA(0x10, 0x10, 0x10, fade >> 1);
-    rmDrawRect(0, 0, screenWidth, screenHeight, mycolor);
+    rmSetDrawAreaFull();
+    rmDrawRect(0, 0, screenFullWidth, screenFullHeight, mycolor);
+    rmSetDrawAreaActive();
 
     GSTEXTURE *logo = thmGetTexture(LOGO_PICTURE);
     if (logo) {
@@ -1528,7 +1533,9 @@ void guiDrawBGPlasma()
     }
 
     pery = ymax;
-    rmDrawPixmap(&gBackgroundTex, 0, 0, ALIGN_NONE, screenWidth, screenHeight, SCALING_NONE, gDefaultCol);
+    rmSetDrawAreaFull();
+    rmDrawPixmap(&gBackgroundTex, 0, 0, ALIGN_NONE, screenFullWidth, screenFullHeight, SCALING_NONE, gDefaultCol);
+    rmSetDrawAreaActive();
 }
 
 int guiDrawIconAndText(int iconId, int textId, int font, int x, int y, u64 color)
@@ -1701,16 +1708,16 @@ void guiSwitchScreen(int target, int transition)
 {
     if (transition == TRANSITION_LEFT) {
         transitionX = 1;
-        transMax = screenWidth;
+        transMax = screenFullWidth;
     } else if (transition == TRANSITION_RIGHT) {
         transitionX = -1;
-        transMax = screenWidth;
+        transMax = screenFullWidth;
     } else if (transition == TRANSITION_UP) {
         transitionY = 1;
-        transMax = screenHeight;
+        transMax = screenFullHeight;
     } else if (transition == TRANSITION_DOWN) {
         transitionY = -1;
-        transMax = screenHeight;
+        transMax = screenFullHeight;
     }
     transIndex = 0;
 
@@ -1770,7 +1777,9 @@ int guiMsgBox(const char *text, int addAccept, struct UIItem *ui)
         else
             guiShow();
 
-        rmDrawRect(0, 0, screenWidth, screenHeight, gColDarker);
+        rmSetDrawAreaFull();
+        rmDrawRect(0, 0, screenFullWidth, screenFullHeight, gColDarker);
+        rmSetDrawAreaActive();
 
         rmDrawLine(50, 75, screenWidth - 50, 75, gColWhite);
         rmDrawLine(50, 410, screenWidth - 50, 410, gColWhite);
@@ -1800,7 +1809,9 @@ void guiRenderTextScreen(const unsigned char *message)
 
     guiShow();
 
-    rmDrawRect(0, 0, screenWidth, screenHeight, gColDarker);
+    rmSetDrawAreaFull();
+    rmDrawRect(0, 0, screenFullWidth, screenFullHeight, gColDarker);
+    rmSetDrawAreaActive();
 
     fntRenderString(gTheme->fonts[0], screenWidth >> 1, gTheme->usedHeight >> 1, ALIGN_CENTER, 0, 0, message, gTheme->textColor);
 
@@ -1815,7 +1826,9 @@ void guiWarning(const char *text, int count)
 
     guiShow();
 
-    rmDrawRect(0, 0, screenWidth, screenHeight, gColDarker);
+    rmSetDrawAreaFull();
+    rmDrawRect(0, 0, screenFullWidth, screenFullHeight, gColDarker);
+    rmSetDrawAreaActive();
 
     rmDrawLine(50, 75, screenWidth - 50, 75, gColWhite);
     rmDrawLine(50, 410, screenWidth - 50, 410, gColWhite);
