@@ -37,16 +37,19 @@ struct rm_mode
 {
     char mode;
     char hsync; //In KHz
+    short int widthActive;
+    short int heightActive;
+    short int width;
     short int height;
 };
 
 static struct rm_mode rm_mode_table[NUM_RM_VMODES] = {
-    {-1, 16, -1},                  // AUTO
-    {GS_MODE_PAL, 16, 512},        // PAL@50Hz
-    {GS_MODE_NTSC, 16, 448},       // NTSC@60Hz
-    {GS_MODE_DTV_480P, 31, 448},   // DTV480P@60Hz
-    {GS_MODE_DTV_576P, 31, 512},   // DTV576P@50Hz
-    {GS_MODE_VGA_640_60, 31, 480}, // VGA640x480@60Hz
+    {-1, 16, -1},                                 // AUTO
+    {GS_MODE_PAL,        16, 640, 512, 704, 576}, // PAL@50Hz
+    {GS_MODE_NTSC,       16, 640, 448, 704, 480}, // NTSC@60Hz
+    {GS_MODE_DTV_480P,   31, 640, 448, 704, 480}, // DTV480P@60Hz
+    {GS_MODE_DTV_576P,   31, 640, 512, 704, 576}, // DTV576P@50Hz
+    {GS_MODE_VGA_640_60, 31, 640, 480, 640, 480}, // VGA640x480@60Hz
 };
 
 static float aspectWidth;
@@ -55,6 +58,14 @@ static float aspectHeight;
 // Transposition values - all rendering can be transposed (moved on screen) by these
 static float transX = 0;
 static float transY = 0;
+
+enum EDrawArea{
+    EDA_FULL,
+    EDA_ACTIVE
+};
+
+// Transposition values 0, 0 are offset in the full screen area
+static enum EDrawArea drawArea = EDA_FULL;
 
 const u64 gColWhite = GS_SETREG_RGBA(0xFF, 0xFF, 0xFF, 0x00);
 const u64 gColBlack = GS_SETREG_RGBA(0x00, 0x00, 0x00, 0x00);
@@ -293,9 +304,18 @@ static int rmOnVSync(void)
 
 void rmInit()
 {
+    int i;
+    s8 dither_matrix[16] = {4,2,5,3,0,6,1,7,5,3,4,2,1,7,0,6};
+
     gsGlobal = gsKit_init_global();
 
+	for(i = 0; i < 15; i++)
+	    gsGlobal->DitherMatrix[i] = dither_matrix[i];
+
     rm_mode_table[RM_VMODE_AUTO].mode = gsGlobal->Mode;
+    rm_mode_table[RM_VMODE_AUTO].widthActive = 640;
+    rm_mode_table[RM_VMODE_AUTO].heightActive = gsGlobal->Height;
+    rm_mode_table[RM_VMODE_AUTO].width = 704;
     rm_mode_table[RM_VMODE_AUTO].height = gsGlobal->Height;
 
     dmaKit_init(D_CTRL_RELE_OFF, D_CTRL_MFD_OFF, D_CTRL_STS_UNSPEC,
@@ -314,8 +334,8 @@ void rmInit()
     shiftYVal = 1.0f;
     shiftY = &shiftYFunc;
 
-    transX = 0.0f;
-    transY = 0.0f;
+    rmSetDrawAreaActive();
+    rmSetTransposition(0.0f, 0.0f);
 
     guiThreadID = GetThreadId();
     gsKit_add_vsync_handler(&rmOnVSync);
@@ -332,6 +352,7 @@ int rmSetMode(int force)
         vmode = gVMode;
 
         gsGlobal->Mode = rm_mode_table[vmode].mode;
+        gsGlobal->Width = rm_mode_table[vmode].width;
         gsGlobal->Height = rm_mode_table[vmode].height;
 
         if (vmode == RM_VMODE_DTV480P || vmode == RM_VMODE_DTV576P || vmode == RM_VMODE_VGA_640_60) {
@@ -341,50 +362,15 @@ int rmSetMode(int force)
             gsGlobal->Interlace = GS_INTERLACED;
             gsGlobal->Field = GS_FIELD;
         }
-        gsGlobal->Width = 640;
 
-        gsGlobal->PSM = GS_PSM_CT24;
+        gsGlobal->PSM = GS_PSM_CT16S;
         gsGlobal->PSMZ = GS_PSMZ_16S;
+        gsGlobal->Dithering = GS_SETTING_ON;
         gsGlobal->ZBuffering = GS_SETTING_OFF;
         gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
         gsGlobal->DoubleBuffering = GS_SETTING_ON;
 
-        if ((gsGlobal->Mode) == GS_MODE_DTV_576P) { // Write X, Y, DW and DH positions for DTV576P (not covered by GSKit lib)
-            gsGlobal->StartX = 324;
-            gsGlobal->StartY = 72;
-            gsGlobal->DW = 1280;
-            gsGlobal->DH = 512;
-        }
-
         gsKit_init_screen(gsGlobal);
-
-        if (vmode == RM_VMODE_DTV480P) { // Overwrite X, Y and DW GSKit params for DTV480P
-            gsGlobal->StartX = 312;
-            gsGlobal->StartY = 37 + (480 - 448) / 2;
-            gsGlobal->DW = 1280;
-            gsGlobal->DH = 448;
-        } else if (vmode == RM_VMODE_VGA_640_60) { // Overwrite X, Y GSKit params for VGA_640_60
-            gsGlobal->StartX = 276;
-            gsGlobal->StartY = 42;
-        }
-
-        if ((vmode == RM_VMODE_DTV480P) || (vmode == RM_VMODE_VGA_640_60)) { // Commit settings for DTV480P and VGA_650_60
-            DIntr();                                                         // disable interrupts
-            GS_SET_DISPLAY1(gsGlobal->StartX,                                // X position in the display area (in VCK unit
-                            gsGlobal->StartY,                                // Y position in the display area (in Raster u
-                            gsGlobal->MagH,                                  // Horizontal Magnification
-                            gsGlobal->MagV,                                  // Vertical Magnification
-                            gsGlobal->DW - 1,                                // Display area width
-                            gsGlobal->DH - 1);                               // Display area height
-            GS_SET_DISPLAY2(gsGlobal->StartX,                                // X position in the display area (in VCK units)
-                            gsGlobal->StartY,                                // Y position in the display area (in Raster units)
-                            gsGlobal->MagH,                                  // Horizontal Magnification
-                            gsGlobal->MagV,                                  // Vertical Magnification
-                            gsGlobal->DW - 1,                                // Display area width
-                            gsGlobal->DH - 1);                               // Display area height
-            __asm__("sync.l; sync.p;");
-            EIntr(); // enable interrupts
-        }
 
         gsKit_mode_switch(gsGlobal, GS_ONESHOT);
 
@@ -399,10 +385,12 @@ int rmSetMode(int force)
     return changed;
 }
 
-void rmGetScreenExtents(int *w, int *h)
+void rmGetScreenExtents(int *w, int *h, int *fw, int *fh)
 {
-    *w = gsGlobal->Width;
-    *h = gsGlobal->Height;
+    *w  = rm_mode_table[vmode].widthActive;
+    *h  = rm_mode_table[vmode].heightActive;
+    *fw = rm_mode_table[vmode].width;
+    *fh = rm_mode_table[vmode].height;
 }
 
 void rmEnd(void)
@@ -565,10 +553,50 @@ void rmApplyShiftRatio(int *y)
     *y = shiftY(*y);
 }
 
+void _rmAreaOffsetAdd()
+{
+    switch(drawArea) {
+        case EDA_FULL:
+            break;
+        case EDA_ACTIVE:
+            transX += (rm_mode_table[vmode].width  - rm_mode_table[vmode].widthActive)  / 2;
+            transY += (rm_mode_table[vmode].height - rm_mode_table[vmode].heightActive) / 2;
+            break;
+    };
+}
+
+void _rmAreaOffsetSub()
+{
+    switch(drawArea) {
+        case EDA_FULL:
+            break;
+        case EDA_ACTIVE:
+            transX -= (rm_mode_table[vmode].width  - rm_mode_table[vmode].widthActive)  / 2;
+            transY -= (rm_mode_table[vmode].height - rm_mode_table[vmode].heightActive) / 2;
+            break;
+    };
+}
+
 void rmSetTransposition(float x, float y)
 {
     transX = x;
     transY = y;
+
+    _rmAreaOffsetAdd();
+}
+
+void rmSetDrawAreaFull()
+{
+    _rmAreaOffsetSub();
+    drawArea = EDA_FULL;
+    _rmAreaOffsetAdd();
+}
+
+void rmSetDrawAreaActive()
+{
+    _rmAreaOffsetSub();
+    drawArea = EDA_ACTIVE;
+    _rmAreaOffsetAdd();
 }
 
 unsigned char rmGetHsync(void)
