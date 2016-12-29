@@ -14,8 +14,7 @@ git:
   depth: 9999999
 
 before_install:
-## Save OPL dir, go to previous dir and save ENV dir
-- export OPL_DIR=$(pwd)
+## Save ENV dir
 - cd ../
 - export ENV_DIR=$(pwd)
 
@@ -82,11 +81,16 @@ before_script:
 
 script:
 ## Let's build Open PS2 Loader Release!
-- cd ${OPL_DIR}/
-- bash ./make_changelog.sh
-- bash ./lng_pack.sh
-- git add -A
+- cd ${TRAVIS_BUILD_DIR}/
 - make release
+- bash ./lng_pack.sh
+
+before_deploy:
+- export TRAVIS_OPL_VERSION=$(make oplversion)
+- export TRAVIS_CURRENT_DATE=$(date +"%d%m%y")
+- export GIT_TAG=${TRAVIS_OPL_VERSION}-NIGHTLY-${TRAVIS_CURRENT_DATE}-${TRAVIS_BUILD_NUMBER}
+- git tag ${GIT_TAG} -a -m "Generated tag from TravisCI for build ${TRAVIS_OPL_VERSION}-NIGHTLY-${TRAVIS_CURRENT_DATE}-${TRAVIS_BUILD_NUMBER}"
+- git push -q https://${TAGPERM}@github.com/${TRAVIS_REPO_SLUG} -f --tags
 
 ## [TEMPLATE] Deploy OPL to Github Releases
 # 1. Clone this repository
@@ -107,7 +111,7 @@ deploy:
     secure: ZypQ3FMePwUO0JhqqoArINfVK7EWE5hbXF9FehajlNWeJ/AxOeL0QMdO0kzt80exZkh5DYuqc0Pbla5ZM9eZkuKFQkeGUNR06j+JNMWKJD5VbcfHxWy+3vUwJWVQR/D2nFERdBa4WM1CEEn2cCL7PR8Yxiu9jlF1D/QdoM2vMvAHrBFRdvVuUDeO63QtLzQvOuuEhYvwygk25sS2vIE8Jb67bbj/hjhdUE/a9AK9RDCErmBwARijz79QDfvahut7nxQO7TRKvb04D+3ZJGpCsfdV02sqc4G7Gez+qtChU/ILwIXWiHnR40ZFcf4bq6PE2qWpr6Mh319eNaiek6MY42packupz2D8wO0AHm6nsFjBXksAo3ndpqdDweW1nGxBYBXJBYoKZ5LTMo4l0yNDnTCHeMY+JhTI1/NogZacOBjbFLEogu2nfVLbCSqszcm6F2S9dX9ZgzSD98JXQQjpo4eiMvqVkKd7MhmROOea6071zBTVBwdBILjf2v8AIENlP0vq16JAQlJ+kYq4jbX9fcwobyquMEzRlzxuCVjQJRShqAS33PUPcU4TuL2n70xiCu9Vwo+9N9LtbQ/QPHmEQzytsAlvMel2xcyqRH0IROT+Gvt/gIomsvWOfhNAWT6aFSAz3Henc/QGCkt1JmuG9OHqVo3Qyqd2lAaoj2rw1j4=
   file_glob: true
   file:
-    - "${OPL_DIR}/OPNPS2LD-*.zip"
-    - "${OPL_DIR}/OPNPS2LD_LANGS-*.zip"
+    - "${TRAVIS_BUILD_DIR}/OPNPS2LD-*.zip"
+    - "${TRAVIS_BUILD_DIR}/OPNPS2LD_LANGS-*.zip"
   on:
     branch: master
