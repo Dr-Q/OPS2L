@@ -30,14 +30,12 @@ static struct rm_texture_list_t *uploadedTextures = NULL;
 static int order;
 static enum rm_vmode vmode = RM_VMODE_AUTO;
 
-#define NUM_RM_VMODES 8
+#define NUM_RM_VMODES 6
 
 // RM Vmode -> GS Vmode conversion table
 struct rm_mode
 {
     char mode;
-    char interlace;
-    char field;
     char hsync; //In KHz
     short int widthActive;
     short int heightActive;
@@ -46,14 +44,12 @@ struct rm_mode
 };
 
 static struct rm_mode rm_mode_table[NUM_RM_VMODES] = {
-    {-1,                 GS_INTERLACED,    GS_FIELD, 16,  -1,  -1,  -1,  -1}, // AUTO
-    {GS_MODE_PAL,        GS_INTERLACED,    GS_FIELD, 16, 640, 512, 704, 576}, // PAL@50Hz
-    {GS_MODE_NTSC,       GS_INTERLACED,    GS_FIELD, 16, 640, 448, 704, 480}, // NTSC@60Hz
-    {GS_MODE_DTV_480P,   GS_NONINTERLACED, GS_FRAME, 31, 640, 448, 704, 480}, // DTV480P@60Hz
-    {GS_MODE_DTV_576P,   GS_NONINTERLACED, GS_FRAME, 31, 640, 512, 704, 576}, // DTV576P@50Hz
-    {GS_MODE_DTV_720P,   GS_NONINTERLACED, GS_FRAME, 31, 640, 720, 640, 720}, // DTV720P@60Hz
-    {GS_MODE_DTV_1080I,  GS_INTERLACED,    GS_FIELD, 16, 640, 540, 640, 540}, // DTV1080I@60Hz
-    {GS_MODE_VGA_640_60, GS_NONINTERLACED, GS_FRAME, 31, 640, 480, 640, 480}, // VGA640x480@60Hz
+    {-1, 16, -1},                                 // AUTO
+    {GS_MODE_PAL,        16, 640, 512, 704, 576}, // PAL@50Hz
+    {GS_MODE_NTSC,       16, 640, 448, 704, 480}, // NTSC@60Hz
+    {GS_MODE_DTV_480P,   31, 640, 448, 704, 480}, // DTV480P@60Hz
+    {GS_MODE_DTV_576P,   31, 640, 512, 704, 576}, // DTV576P@50Hz
+    {GS_MODE_VGA_640_60, 31, 640, 480, 640, 480}, // VGA640x480@60Hz
 };
 
 static float aspectWidth;
@@ -317,9 +313,9 @@ void rmInit()
 	    gsGlobal->DitherMatrix[i] = dither_matrix[i];
 
     rm_mode_table[RM_VMODE_AUTO].mode = gsGlobal->Mode;
-    rm_mode_table[RM_VMODE_AUTO].widthActive = gsGlobal->Width;
+    rm_mode_table[RM_VMODE_AUTO].widthActive = 640;
     rm_mode_table[RM_VMODE_AUTO].heightActive = gsGlobal->Height;
-    rm_mode_table[RM_VMODE_AUTO].width = gsGlobal->Width;
+    rm_mode_table[RM_VMODE_AUTO].width = 704;
     rm_mode_table[RM_VMODE_AUTO].height = gsGlobal->Height;
 
     dmaKit_init(D_CTRL_RELE_OFF, D_CTRL_MFD_OFF, D_CTRL_STS_UNSPEC,
@@ -332,7 +328,8 @@ void rmInit()
 
     order = 0;
 
-    rmResetAspectRatio();
+    aspectWidth = 1.0f;
+    aspectHeight = 1.0f;
 
     shiftYVal = 1.0f;
     shiftY = &shiftYFunc;
@@ -357,33 +354,23 @@ int rmSetMode(int force)
         gsGlobal->Mode = rm_mode_table[vmode].mode;
         gsGlobal->Width = rm_mode_table[vmode].width;
         gsGlobal->Height = rm_mode_table[vmode].height;
-        gsGlobal->Interlace = rm_mode_table[vmode].interlace;
-        gsGlobal->Field = rm_mode_table[vmode].field;
 
-        // 10bytes/pixel needed in 24bit color mode (32bit front + 32bit back + 16bit depth)
-        //  6bytes/pixel needed in 16bit color mode (16bit front + 16bit back + 16bit depth)
-        // Keep at least 1MiB free for textures
-        if ((gsGlobal->Width*gsGlobal->Height*10) > (3*1024*1024)) {
-            gsGlobal->PSM = GS_PSM_CT16S;
-            gsGlobal->Dithering = GS_SETTING_ON;
-        }
-        else {
-            gsGlobal->PSM = GS_PSM_CT24;
-            gsGlobal->Dithering = GS_SETTING_OFF;
+        if (vmode == RM_VMODE_DTV480P || vmode == RM_VMODE_DTV576P || vmode == RM_VMODE_VGA_640_60) {
+            gsGlobal->Interlace = GS_NONINTERLACED;
+            gsGlobal->Field = GS_FRAME;
+        } else {
+            gsGlobal->Interlace = GS_INTERLACED;
+            gsGlobal->Field = GS_FIELD;
         }
 
+        gsGlobal->PSM = GS_PSM_CT16S;
         gsGlobal->PSMZ = GS_PSMZ_16S;
+        gsGlobal->Dithering = GS_SETTING_ON;
         gsGlobal->ZBuffering = GS_SETTING_OFF;
         gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
         gsGlobal->DoubleBuffering = GS_SETTING_ON;
 
         gsKit_init_screen(gsGlobal);
-
-        if (rm_mode_table[vmode].mode == GS_MODE_DTV_720P)
-            gsKit_set_display_offset(gsGlobal, -120, -16);
-
-        if (rm_mode_table[vmode].mode == GS_MODE_DTV_1080I)
-            gsKit_set_display_offset(gsGlobal, -66, -200);
 
         gsKit_mode_switch(gsGlobal, GS_ONESHOT);
 
@@ -392,8 +379,6 @@ int rmSetMode(int force)
         // reset the contents of the screen to avoid garbage being displayed
         gsKit_clear(gsGlobal, gColBlack);
         gsKit_sync_flip(gsGlobal);
-
-        rmSetTransposition(0.0f, 0.0f);
 
         LOG("RENDERMAN New vmode: %d, %d x %d\n", vmode, gsGlobal->Width, gsGlobal->Height);
     }
@@ -530,16 +515,14 @@ void rmDrawLine(int x, int y, int x1, int y1, u64 color)
 
 void rmSetAspectRatio(float width, float height)
 {
-    aspectWidth  = 640.0f / rm_mode_table[vmode].widthActive;
-    aspectHeight = 480.0f / rm_mode_table[vmode].heightActive;
-
-    aspectWidth  *= width;
-    aspectHeight *= height;
+    aspectWidth = width;
+    aspectHeight = height;
 }
 
 void rmResetAspectRatio()
 {
-    rmSetAspectRatio(1.0f, 1.0f);
+    aspectWidth = 1.0f;
+    aspectHeight = 1.0f;
 }
 
 void rmGetAspectRatio(float *w, float *h)
