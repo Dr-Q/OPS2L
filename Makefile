@@ -217,7 +217,7 @@ else
 endif
 
 release:
-	$(MAKE) VMC=1 GSM=1 IGS=1 CHEAT=1 $(EE_VPKD).ZIP
+	$(MAKE) VMC=1 GSM=1 IGS=1 CHEAT=1 $(EE_VPKD).ZIP all
 	
 childproof:
 	$(MAKE) CHILDPROOF=1 all
