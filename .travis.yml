@@ -86,6 +86,8 @@ script:
 - bash ./lng_pack.sh
 
 before_deploy:
+- git config --global user.email "builds@travis-ci.com"
+- git config --global user.name "TravisCI"
 - export TRAVIS_OPL_VERSION=$(make oplversion)
 - export TRAVIS_CURRENT_DATE=$(date +"%d%m%y")
 - export GIT_TAG=${TRAVIS_OPL_VERSION}-NIGHTLY-${TRAVIS_CURRENT_DATE}-${TRAVIS_BUILD_NUMBER}
