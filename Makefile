@@ -207,6 +207,27 @@ EE_OBJS := $(EE_OBJS:%=$(EE_OBJS_DIR)%)
 
 .PHONY: all release childproof debug iopcore_debug eesio_debug ingame_debug deci2_debug clean rebuild pc_tools pc_tools_win32 oplversion
 
+release:
+	$(MAKE) VMC=1 GSM=1 IGS=1 CHEAT=1 $(EE_VPKD).ZIP
+	
+childproof:
+	$(MAKE) CHILDPROOF=1
+
+debug:
+	$(MAKE) DEBUG=1
+
+iopcore_debug:
+	$(MAKE) DEBUG=1 IOPCORE_DEBUG=1
+
+eesio_debug:
+	$(MAKE) DEBUG=1 EESIO_DEBUG=1
+
+ingame_debug:
+	$(MAKE) DEBUG=1 INGAME_DEBUG=1
+
+deci2_debug:
+	$(MAKE) DEBUG=1 INGAME_DEBUG=1 DECI2_DEBUG=1
+
 all:
 	echo "Building Open PS2 Loader $(OPL_VERSION)..."
 	echo "-Interface"
@@ -215,27 +236,6 @@ ifneq ($(NOT_PACKED),1)
 else
 	$(MAKE) $(EE_BIN)
 endif
-
-release:
-	$(MAKE) VMC=1 GSM=1 IGS=1 CHEAT=1 $(EE_VPKD).ZIP all
-	
-childproof:
-	$(MAKE) CHILDPROOF=1 all
-
-debug:
-	$(MAKE) DEBUG=1 all
-
-iopcore_debug:
-	$(MAKE) DEBUG=1 IOPCORE_DEBUG=1 all
-
-eesio_debug:
-	$(MAKE) DEBUG=1 EESIO_DEBUG=1 all
-
-ingame_debug:
-	$(MAKE) DEBUG=1 INGAME_DEBUG=1 all
-
-deci2_debug:
-	$(MAKE) DEBUG=1 INGAME_DEBUG=1 DECI2_DEBUG=1 all
 
 clean:
 	echo "Cleaning..."
@@ -340,6 +340,7 @@ $(EE_VPKD).ELF: $(EE_BIN_PACKED)
 
 $(EE_VPKD).ZIP: $(EE_VPKD).ELF DETAILED_CHANGELOG CREDITS LICENSE README.md
 	zip -r $@ $^
+	echo "OPL Zip Package Complete: $(EE_VPKD).zip"
 
 ee_core/ee_core.elf: ee_core
 	echo "-EE core"
