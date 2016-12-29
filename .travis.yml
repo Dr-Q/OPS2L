@@ -82,8 +82,10 @@ before_script:
 script:
 ## Let's build Open PS2 Loader Release!
 - cd ${TRAVIS_BUILD_DIR}/
-- make release
 - bash ./lng_pack.sh
+- bash ./make_changelog.sh
+- git add -A && git commit -m "Auto generated files in TravisCI for build ${TRAVIS_BUILD_NUMBER}"
+- make release
 
 before_deploy:
 - git config --global user.email "builds@travis-ci.com"
