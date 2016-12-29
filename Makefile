@@ -727,7 +727,7 @@ $(EE_OBJS_DIR)%.o: $(EE_ASM_DIR)%.s | $(EE_OBJS_DIR)
 	$(EE_AS) $(EE_ASFLAGS) $< -o $@
 
 oplversion:
-	@echo $(OPLVERSION)
+	@echo $(OPL_VERSION)
 
 include $(PS2SDK)/samples/Makefile.pref
 include $(PS2SDK)/samples/Makefile.eeglobal
