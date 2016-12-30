@@ -95,7 +95,7 @@ before_deploy:
 - export TRAVIS_CURRENT_DATE=$(date +"%d%m%y")
 - export GIT_TAG=${TRAVIS_OPL_VERSION}-NIGHTLY-${TRAVIS_CURRENT_DATE}-${TRAVIS_BUILD_NUMBER}
 - git tag ${GIT_TAG} -a -m "Generated tag from TravisCI for build ${TRAVIS_OPL_VERSION}-NIGHTLY-${TRAVIS_CURRENT_DATE}-${TRAVIS_BUILD_NUMBER}"
-- git push -q https://${TAGPERM}@github.com/${TRAVIS_REPO_SLUG} -f --tags
+- git push -q https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG} -f --tags
 
 ## [TEMPLATE] Deploy OPL to Github Releases
 # 1. Clone this repository
