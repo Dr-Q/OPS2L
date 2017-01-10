@@ -6,6 +6,8 @@
 # - Bat Rastard@psx-scene and doctorxyz@psx-scene
 #   <http://psx-scene.com/forums/f150/2015-linux-mint-vm-creation-opl-compiling-guide-ps2sdk-127047/index3.html#post1169435>
 # - and a lot of people around internet :)
+
+dist: trusty
 sudo: required
 language: c
 
