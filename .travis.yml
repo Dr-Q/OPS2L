@@ -15,7 +15,8 @@ git:
 
 before_install:
 ## Save env dir
-- export TRAVIS_ENV_DIR=../$(pwd)
+- cd ..
+- export TRAVIS_ENV_DIR=$(pwd)
 
 install:
 ## Dependencies
