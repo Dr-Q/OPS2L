@@ -96,6 +96,11 @@ script:
 ## Let's build Open PS2 Loader Release!
 - make release
 
+after_success:
+- OPL_VERSION=$(make oplversion)-NIGHTLY${TRAVIS_BUILD_NUMBER}.zip
+- curl --upload-file ${TRAVIS_BUILD_DIR}/OPNPS2LD-${OPL_VERSION} https://transfer.sh/OPNPS2LD-${OPL_VERSION}
+- curl --upload-file ${TRAVIS_BUILD_DIR}/OPNPS2LD_LANGS-${OPL_VERSION} https://transfer.sh/OPNPS2LD_LANGS-${OPL_VERSION}
+
 ## [TEMPLATE] Deploy OPL to Github Releases
 # 1. Clone this repository
 # 2. Copy '.travis.yml' to '.travis-original.yml' (you will need it after)
